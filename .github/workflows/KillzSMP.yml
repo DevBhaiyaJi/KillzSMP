@@ -47,15 +47,6 @@ jobs:
       run: |
         echo '[{"uuid":"00000000-0000-0000-0000-000000000000","name":"NotDev42","level":4,"bypassesPlayerLimit":false}]' > server/ops.json
 
-    - name: Copy CommandExecutor plugin  
-      run: |  
-        mkdir -p server/plugins  
-        cp CommandExecutor.jar server/plugins/  
-
-    - name: Copy commands.txt  
-      run: |  
-        cp commands.txt server/ || true  
-
     - name: Start Minecraft server (7GB RAM)  
       run: |  
         cd server  
