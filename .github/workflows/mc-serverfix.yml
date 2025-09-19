@@ -1,0 +1,68 @@
+name: Minecraft Server with Playit + Plugins (Paper 1.21.8, 7GB RAM)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"   # har 6 ghante restart
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Setup Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Restore world & plugins
+      run: |
+        mkdir -p server/plugins
+        if [ -d world_backup ]; then
+          cp -r world_backup server/world || true
+        fi
+        if [ -d plugins_backup ]; then
+          cp -r plugins_backup/* server/plugins/ || true
+        fi
+
+    - name: Download PaperMC 1.21.8
+      run: |
+        mkdir -p server
+        curl -L -o server/server.jar https://api.papermc.io/v2/projects/paper/versions/1.21.8/builds/60/downloads/paper-1.21.8-60.jar
+
+    - name: Accept EULA
+      run: |
+        echo "eula=true" > server/eula.txt
+
+    - name: Start Minecraft server (7GB RAM)
+      run: |
+        cd server
+        java -Xmx7G -Xms2G -jar server.jar nogui &
+        sleep 40
+
+    - name: Install Playit
+      run: |
+        curl -L https://github.com/playit-cloud/playit-agent/releases/latest/download/playit-linux-amd64 -o playit
+        chmod +x playit
+        ./playit --secret ${{ secrets.PLAYIT_SECRET }} &
+
+    - name: Keep alive
+      run: |
+        sleep 21000   # ~6 hours runtime
+
+    - name: Save world & plugins
+      run: |
+        rm -rf world_backup plugins_backup
+        cp -r server/world world_backup || true
+        mkdir -p plugins_backup
+        cp -r server/plugins/* plugins_backup/ || true
+        git config --global user.email "actions@github.com"
+        git config --global user.name "GitHub Actions"
+        git add world_backup plugins_backup
+        git commit -m "Auto-save world + plugins" || true
+        git push
