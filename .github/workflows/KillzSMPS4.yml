@@ -1,0 +1,81 @@
+name: Minecraft Server (Google Drive Backup, Java 21, 7GB RAM)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"   # har 6 ghante restart
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3600
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Setup Java 21
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+
+    - name: Install tools
+      run: sudo apt-get install -y unzip zip
+
+    - name: Install rclone
+      run: |
+        curl https://rclone.org/install.sh | sudo bash
+        mkdir -p ~/.config/rclone
+        echo "${{ secrets.RCLONE_CONF }}" > ~/.config/rclone/rclone.conf
+
+    - name: Download server.jar
+      run: |
+        mkdir -p server
+        rclone copy gdrive:/mc/server.jar server/
+
+    - name: Download world
+      run: |
+        rclone copy gdrive:/mc/world.zip .
+        mkdir -p server/world
+        unzip -o world.zip -d server/world
+
+    - name: Download plugins
+      run: |
+        rclone copy gdrive:/mc/plugins.zip .
+        mkdir -p server/plugins
+        unzip -o plugins.zip -d server/plugins
+
+    - name: Accept EULA
+      run: echo "eula=true" > server/eula.txt
+
+    - name: Set server.properties
+      run: echo "online-mode=false" >> server/server.properties
+
+    - name: Add server operator
+      run: |
+        echo '[{"uuid":"00000000-0000-0000-0000-000000000000","name":"NotDev42","level":4,"bypassesPlayerLimit":false}]' > server/ops.json
+
+    - name: Start Minecraft server
+      run: |
+        cd server
+        java -Xmx7G -Xms2G -jar server.jar nogui &
+        sleep 40
+
+    - name: Install Playit
+      run: |
+        curl -L https://github.com/playit-cloud/playit-agent/releases/latest/download/playit-linux-amd64 -o playit
+        chmod +x playit
+        ./playit --secret ${{ secrets.PLAYIT_SECRET }} &
+
+    - name: Keep alive
+      run: sleep 21000   # ~6 ghante
+
+    - name: Backup world & plugins to Google Drive
+      if: always()
+      run: |
+        cd server
+        zip -r world.zip world
+        zip -r plugins.zip plugins
+        rclone copy world.zip gdrive:/mc/ -P
+        rclone copy plugins.zip gdrive:/mc/ -P
