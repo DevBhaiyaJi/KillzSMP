@@ -45,14 +45,14 @@ jobs:
           mkdir -p server/world
         fi
 
-    - name: Download and extract plugins
+    - name: Download and extract plugins (safe)
       run: |
-        if rclone ls gdrive:/mc/plugins.zip; then
-          rclone copy gdrive:/mc/plugins.zip . --drive-acknowledge-abuse
-          mkdir -p server/plugins
-          unzip -o plugins.zip -d server/plugins
-        else
-          mkdir -p server/plugins
+        mkdir -p server/plugins
+        if rclone ls gdrive:/mc/plugins_copy.zip; then
+          rclone copy gdrive:/mc/plugins_copy.zip . --drive-acknowledge-abuse || echo "Skipping plugins download due to abuse flag"
+          if [ -f plugins_copy.zip ]; then
+            unzip -o plugins_copy.zip -d server/plugins || echo "No plugins to extract"
+          fi
         fi
 
     - name: Accept EULA
