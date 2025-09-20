@@ -38,7 +38,7 @@ jobs:
     - name: Download and extract world
       run: |
         if rclone ls gdrive:/mc/world.zip; then
-          rclone copy gdrive:/mc/world.zip .
+          rclone copy gdrive:/mc/world.zip . --drive-acknowledge-abuse
           mkdir -p server/world
           unzip -o world.zip -d server/world
         else
@@ -48,7 +48,7 @@ jobs:
     - name: Download and extract plugins
       run: |
         if rclone ls gdrive:/mc/plugins.zip; then
-          rclone copy gdrive:/mc/plugins.zip .
+          rclone copy gdrive:/mc/plugins.zip . --drive-acknowledge-abuse
           mkdir -p server/plugins
           unzip -o plugins.zip -d server/plugins
         else
@@ -69,7 +69,7 @@ jobs:
       run: |
         cd server
         java -Xmx7G -Xms2G -jar server.jar nogui &
-        sleep 40
+        sleep 60  # Large worlds ke liye safe start
 
     - name: Install Playit
       run: |
@@ -84,7 +84,8 @@ jobs:
       if: always()
       run: |
         cd server
-        zip -r world.zip world
-        zip -r plugins.zip plugins
-        rclone copy world.zip gdrive:/mc/ -P
-        rclone copy plugins.zip gdrive:/mc/ -P
+        timestamp=$(date +%Y%m%d%H%M)
+        zip -r world_$timestamp.zip world
+        zip -r plugins_$timestamp.zip plugins
+        rclone copy world_$timestamp.zip gdrive:/mc/ -P --drive-acknowledge-abuse
+        rclone copy plugins_$timestamp.zip gdrive:/mc/ -P --drive-acknowledge-abuse
