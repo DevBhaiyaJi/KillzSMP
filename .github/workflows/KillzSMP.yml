@@ -1,4 +1,4 @@
-name: KILLZ SMP
+name: Killz SMP+ Plugins (Paper 1.21.8, 7GB RAM, Java 21, Offline Mode, OP NotDev42, Persistent World)
 
 on:
   workflow_dispatch:
@@ -20,16 +20,6 @@ jobs:
         distribution: 'temurin'  
         java-version: '21'  
 
-    - name: Restore world & plugins  
-      run: |  
-        mkdir -p server/plugins  
-        if [ -d world_backup ]; then  
-          cp -r world_backup server/world || true  
-        fi  
-        if [ -d plugins_backup ]; then  
-          cp -r plugins_backup/* server/plugins/ || true  
-        fi  
-
     - name: Download PaperMC 1.21.8  
       run: |  
         mkdir -p server  
@@ -46,6 +36,17 @@ jobs:
     - name: Set server operator NotDev42
       run: |
         echo '[{"uuid":"00000000-0000-0000-0000-000000000000","name":"NotDev42","level":4,"bypassesPlayerLimit":false}]' > server/ops.json
+
+    - name: Restore world & plugins  
+      run: |  
+        mkdir -p server/plugins  
+        if [ -d world_backup ]; then  
+          rm -rf server/world  
+          cp -r world_backup server/world  
+        fi  
+        if [ -d plugins_backup ]; then  
+          cp -r plugins_backup/* server/plugins/ || true  
+        fi  
 
     - name: Start Minecraft server (7GB RAM)  
       run: |  
