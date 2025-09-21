@@ -77,20 +77,10 @@ jobs:
         chmod +x playit
         ./playit --secret ${{ secrets.PLAYIT_SECRET }} &
 
-    - name: Keep alive + auto backup every 30min
-      run: |
-        for i in {1..10}; do   # 10 * 30min = 5 hours
-          sleep 1800
-          cd server
-          timestamp=$(date +%Y%m%d%H%M)
-          zip -r world_$timestamp.zip world
-          zip -r plugins_$timestamp.zip plugins
-          rclone copy world_$timestamp.zip gdrive:/mc/ -P --drive-acknowledge-abuse
-          rclone copy plugins_$timestamp.zip gdrive:/mc/ -P --drive-acknowledge-abuse
-          cd ..
-        done
+    - name: Keep alive
+      run: sleep 18000   # ~5 ghante
 
-    - name: Final backup world & plugins to Google Drive
+    - name: Backup world & plugins to Google Drive
       if: always()
       run: |
         cd server
