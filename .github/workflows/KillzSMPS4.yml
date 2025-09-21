@@ -3,7 +3,7 @@ name: Minecraft Server (Google Drive + Backup, Java 21, 7GB RAM)
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */6 * * *"   # har 6 ghante restart
+    - cron: "0 */5 * * *"   # har 5 ghante restart
 
 jobs:
   build:
@@ -48,10 +48,10 @@ jobs:
     - name: Download and extract plugins (safe)
       run: |
         mkdir -p server/plugins
-        if rclone ls gdrive:/mc/plugins_copy.zip; then
-          rclone copy gdrive:/mc/plugins_copy.zip . --drive-acknowledge-abuse || echo "Skipping plugins download due to abuse flag"
-          if [ -f plugins_copy.zip ]; then
-            unzip -o plugins_copy.zip -d server/plugins || echo "No plugins to extract"
+        if rclone ls gdrive:/mc/plugins.zip; then
+          rclone copy gdrive:/mc/plugins.zip . --drive-acknowledge-abuse || echo "Skipping plugins download due to abuse flag"
+          if [ -f plugins.zip ]; then
+            unzip -o plugins.zip -d server/plugins || echo "No plugins to extract"
           fi
         fi
 
@@ -77,10 +77,20 @@ jobs:
         chmod +x playit
         ./playit --secret ${{ secrets.PLAYIT_SECRET }} &
 
-    - name: Keep alive
-      run: sleep 21000   # ~6 ghante
+    - name: Keep alive + auto backup every 30min
+      run: |
+        for i in {1..10}; do   # 10 * 30min = 5 hours
+          sleep 1800
+          cd server
+          timestamp=$(date +%Y%m%d%H%M)
+          zip -r world_$timestamp.zip world
+          zip -r plugins_$timestamp.zip plugins
+          rclone copy world_$timestamp.zip gdrive:/mc/ -P --drive-acknowledge-abuse
+          rclone copy plugins_$timestamp.zip gdrive:/mc/ -P --drive-acknowledge-abuse
+          cd ..
+        done
 
-    - name: Backup world & plugins to Google Drive
+    - name: Final backup world & plugins to Google Drive
       if: always()
       run: |
         cd server
