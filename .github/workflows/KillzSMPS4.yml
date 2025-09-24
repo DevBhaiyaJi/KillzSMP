@@ -21,7 +21,7 @@ jobs:
         java-version: '21'
 
     - name: Install tools
-      run: sudo apt-get install -y unzip zip curl
+      run: sudo apt-get install -y unzip zip curl screen
 
     - name: Setup rclone from base64 secret
       run: |
@@ -45,14 +45,12 @@ jobs:
           mkdir -p server/world
         fi
 
-    - name: Download and extract plugins (safe)
+    - name: Download and extract plugins
       run: |
         mkdir -p server/plugins
         if rclone ls gdrive:/mc/plugins.zip; then
-          rclone copy gdrive:/mc/plugins.zip . --drive-acknowledge-abuse || echo "Skipping plugins download due to abuse flag"
-          if [ -f plugins.zip ]; then
-            unzip -o plugins.zip -d server/plugins || echo "No plugins to extract"
-          fi
+          rclone copy gdrive:/mc/plugins.zip . --drive-acknowledge-abuse
+          unzip -o plugins.zip -d server/plugins
         fi
 
     - name: Accept EULA
@@ -68,8 +66,8 @@ jobs:
     - name: Start Minecraft server
       run: |
         cd server
-        java -Xmx7G -Xms2G -jar server.jar nogui &
-        sleep 60  # Large worlds ke liye safe start
+        screen -dmS mc java -Xmx7G -Xms2G -jar server.jar nogui
+        sleep 60  # safe start for large worlds
 
     - name: Install Playit
       run: |
@@ -77,15 +75,21 @@ jobs:
         chmod +x playit
         ./playit --secret ${{ secrets.PLAYIT_SECRET }} &
 
-    - name: Keep alive
+    - name: Keep server alive
       run: sleep 18000   # ~5 ghante
 
-    - name: Backup world & plugins to Google Drive
+    - name: Stop server safely and backup
       if: always()
       run: |
         cd server
-        timestamp=$(date +%Y%m%d%H%M)
-        zip -r world_$timestamp.zip world
-        zip -r plugins_$timestamp.zip plugins
-        rclone copy world_$timestamp.zip gdrive:/mc/ -P --drive-acknowledge-abuse
-        rclone copy plugins_$timestamp.zip gdrive:/mc/ -P --drive-acknowledge-abuse
+        # Safe stop server
+        screen -S mc -p 0 -X stuff "save-all\nstop\n"
+        sleep 20
+
+        # Zip world and plugins without timestamp
+        zip -r world.zip world
+        zip -r plugins.zip plugins
+
+        # Upload and overwrite old backups
+        rclone copy -f world.zip gdrive:/mc/ --drive-acknowledge-abuse
+        rclone copy -f plugins.zip gdrive:/mc/ --drive-acknowledge-abuse
