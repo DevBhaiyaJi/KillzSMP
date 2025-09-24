@@ -85,11 +85,12 @@ jobs:
         # Safe stop server
         screen -S mc -p 0 -X stuff "save-all\nstop\n"
         sleep 20
-
-        # Zip world and plugins without timestamp (overwrite old backups)
+        # Zip world and plugins (overwrite old)
         zip -r world.zip world
         zip -r plugins.zip plugins
-
-        # Upload and overwrite old backups
         rclone copy -f world.zip gdrive:/mc/ --drive-acknowledge-abuse
         rclone copy -f plugins.zip gdrive:/mc/ --drive-acknowledge-abuse
+
+    - name: Check Playit account
+      run: |
+        ./playit --secret ${{ secrets.PLAYIT_SECRET }} status
