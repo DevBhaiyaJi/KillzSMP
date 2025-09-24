@@ -38,19 +38,19 @@ jobs:
     - name: Download and extract world
       run: |
         if rclone ls gdrive:/mc/world.zip; then
-          rclone copy gdrive:/mc/world.zip . --drive-acknowledge-abuse
-          mkdir -p server/world
-          unzip -o world.zip -d server/world
+          rclone copy gdrive:/mc/world.zip server/ --drive-acknowledge-abuse
+          unzip -o server/world.zip -d server/
         else
           mkdir -p server/world
         fi
 
     - name: Download and extract plugins
       run: |
-        mkdir -p server/plugins
         if rclone ls gdrive:/mc/plugins.zip; then
-          rclone copy gdrive:/mc/plugins.zip . --drive-acknowledge-abuse
-          unzip -o plugins.zip -d server/plugins
+          rclone copy gdrive:/mc/plugins.zip server/ --drive-acknowledge-abuse
+          unzip -o server/plugins.zip -d server/
+        else
+          mkdir -p server/plugins
         fi
 
     - name: Accept EULA
@@ -86,7 +86,7 @@ jobs:
         screen -S mc -p 0 -X stuff "save-all\nstop\n"
         sleep 20
 
-        # Zip world and plugins without timestamp
+        # Zip world and plugins without timestamp (overwrite old backups)
         zip -r world.zip world
         zip -r plugins.zip plugins
 
