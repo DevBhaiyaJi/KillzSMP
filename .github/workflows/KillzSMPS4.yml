@@ -46,11 +46,10 @@ jobs:
 
     - name: Download and extract plugins
       run: |
+        mkdir -p server/plugins
         if rclone ls gdrive:/mc/plugins.zip; then
           rclone copy gdrive:/mc/plugins.zip server/ --drive-acknowledge-abuse
-          unzip -o server/plugins.zip -d server/
-        else
-          mkdir -p server/plugins
+          unzip -o server/plugins.zip -d server/plugins
         fi
 
     - name: Accept EULA
