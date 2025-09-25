@@ -40,6 +40,11 @@ jobs:
         if rclone ls gdrive:/mc/world.zip; then
           rclone copy gdrive:/mc/world.zip server/ --drive-acknowledge-abuse
           unzip -o server/world.zip -d server/
+          # fix nested folder (world/world) if exists
+          if [ -d server/world/world ]; then
+            rm -rf server/world
+            mv server/world/world server/world
+          fi
         else
           mkdir -p server/world
         fi
@@ -58,15 +63,15 @@ jobs:
     - name: Set server.properties
       run: echo "online-mode=false" >> server/server.properties
 
-    - name: Add server operator
+    - name: Add server operator (cracked support)
       run: |
-        echo '[{"uuid":"00000000-0000-0000-0000-000000000000","name":"NotDev42","level":4,"bypassesPlayerLimit":false}]' > server/ops.json
+        echo '[{"uuid":"00000000-0000-0000-0000-000000000000","name":"YourCrackUsername","level":4,"bypassesPlayerLimit":false}]' > server/ops.json
 
     - name: Start Minecraft server
       run: |
         cd server
         screen -dmS mc java -Xmx7G -Xms2G -jar server.jar nogui
-        sleep 60  # safe start for large worlds
+        sleep 60  # wait for safe startup
 
     - name: Install Playit
       run: |
@@ -81,15 +86,22 @@ jobs:
       if: always()
       run: |
         cd server
-        # Safe stop server
-        screen -S mc -p 0 -X stuff "save-all\nstop\n"
+        # flush world to disk
+        screen -S mc -p 0 -X stuff "save-all\n"
+        sleep 10
+        screen -S mc -p 0 -X stuff "stop\n"
         sleep 20
-        # Zip world and plugins (overwrite old)
-        zip -r world.zip world
-        zip -r plugins.zip plugins
-        rclone copy -f world.zip gdrive:/mc/ --drive-acknowledge-abuse
-        rclone copy -f plugins.zip gdrive:/mc/ --drive-acknowledge-abuse
 
-    - name: Check Playit account
-      run: |
-        ./playit --secret ${{ secrets.PLAYIT_SECRET }} status
+        # backup world
+        if [ -d "world" ]; then
+          rm -f world.zip
+          zip -r world.zip world
+          rclone copy world.zip gdrive:/mc/ --drive-acknowledge-abuse
+        fi
+
+        # backup plugins
+        if [ -d "plugins" ]; then
+          rm -f plugins.zip
+          zip -r plugins.zip plugins
+          rclone copy plugins.zip gdrive:/mc/ --drive-acknowledge-abuse
+        fi
